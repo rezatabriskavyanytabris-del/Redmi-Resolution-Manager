@@ -1,0 +1,56 @@
+
+name: Build Redmi Resolution Manager APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'RedmiResolutionManager-source-v1.zip'
+      - '.github/workflows/build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract project ZIP
+        run: |
+          mkdir project
+          unzip -q RedmiResolutionManager-source-v1.zip -d project
+
+      - name: Find project root
+        id: project
+        run: |
+          SETTINGS_FILE=$(find project -type f \( -name settings.gradle -o -name settings.gradle.kts \) -print -quit)
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "Gradle settings file not found!"
+            find project -maxdepth 4 -type f
+            exit 1
+          fi
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+          echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+          echo "Project root: $PROJECT_DIR"
+
+      - name: Build APK
+        run: gradle -p "${{ steps.project.outputs.dir }}" :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Redmi-Resolution-Manager-APK
+          path: ${{ steps.project.outputs.dir }}/app/build/outputs/apk/debug/*.apk
+          
